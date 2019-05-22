@@ -1,5 +1,5 @@
 [package]
-name = "bam_histogram_rust"
+name = "bam_histogram_qc"
 version = "0.1.0"
 authors = ["Savo Lazic <savo.lazic@oicr.on.ca>"]
 edition = "2018"
