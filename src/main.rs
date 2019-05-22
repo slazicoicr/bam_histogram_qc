@@ -3,9 +3,11 @@ use rust_htslib::bam::{
     ReadError, Reader,
 };
 use rust_htslib::prelude::*;
+use serde_derive::Serialize;
+use serde_json;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct BamQC {
     insert_size: HashMap<i32, usize>,
     cigar: HashMap<u32, HashMap<char, usize>>,
@@ -72,5 +74,6 @@ fn main() {
         }
     }
 
-    //println!("{:?}", qc);
+    let serialized = serde_json::to_string(&qc).unwrap();
+    println!("{}", serialized)
 }

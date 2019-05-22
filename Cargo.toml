@@ -6,3 +6,6 @@ edition = "2018"
 
 [dependencies]
 rust-htslib = "0.23.0"
+serde = "~1.0"
+serde_derive = "~1.0"
+serde_json = "~1.0"
