@@ -5,6 +5,7 @@ authors = ["Savo Lazic <savo.lazic@oicr.on.ca>"]
 edition = "2018"
 
 [dependencies]
+clap = "~2.33"
 rust-htslib = "0.23.0"
 serde = "~1.0"
 serde_derive = "~1.0"

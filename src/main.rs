@@ -1,6 +1,7 @@
+use clap::{App, Arg};
 use rust_htslib::bam::{
     record::{Cigar, Record},
-    ReadError, Reader, ReaderPathError, ThreadingError,
+    BGZFError, ReadError, Reader, ReaderPathError, ThreadingError,
 };
 use rust_htslib::prelude::*;
 use serde_derive::Serialize;
@@ -23,12 +24,41 @@ impl BamQC {
 }
 
 fn main() -> Result<(), Error> {
-    let mut bam = Reader::from_path(
-        &"/home/slazic/Documents/Code/2019-05-21-bam_hist_rust/bam_histogram_rust/files/\
-          SWID_13766177_GLCS_0001_Lv_R_PE_280_WG_DKT3-2_190305_M00146_0024_000000000-D5N29_\
-          GCGAGTAA_L001_001.annotated.bam",
-    )?;
-    bam.set_threads(8)?;
+    let arg = App::new("Bam Histogram Calculator")
+        .version("0.1")
+        .author("Savo Lazic <savo.lazic@oicr.on.ca")
+        .about(
+            "Collects various statistics from a BAM file that allow creation of histograms for QC \
+             purposes",
+        )
+        .arg(
+            Arg::with_name("FILE")
+                .help("File path to BAM file. Use '-' for STDIN")
+                .required(true)
+                .index(1),
+        )
+        .arg(
+            Arg::with_name("threads")
+                .help("Number of threads to use")
+                .short("t")
+                .long("threads")
+                .default_value("1"),
+        )
+        .get_matches();
+
+    let path = arg.value_of("FILE").unwrap();
+    let thread: usize = arg
+        .value_of("threads")
+        .unwrap()
+        .parse()
+        .map_err(|_| ThreadingError::Some)?;
+
+    let mut bam = if path == "-" {
+        Reader::from_stdin()?
+    } else {
+        Reader::from_path(path)?
+    };
+    bam.set_threads(thread)?;
 
     let mut qc = BamQC::new();
     let mut record = Record::new();
@@ -109,5 +139,11 @@ impl From<ThreadingError> for Error {
 impl From<serde_json::error::Error> for Error {
     fn from(error: serde_json::error::Error) -> Self {
         Error::JSONError(error)
+    }
+}
+
+impl From<BGZFError> for Error {
+    fn from(error: BGZFError) -> Self {
+        Error::ReaderPathError(ReaderPathError::BGZFError(error))
     }
 }
