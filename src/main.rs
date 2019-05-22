@@ -62,15 +62,11 @@ fn main() -> Result<(), Error> {
 
     let mut qc = BamQC::new();
     let mut record = Record::new();
-    let mut record_error = Ok(());
 
     loop {
         match bam.read(&mut record) {
             Err(ReadError::NoMoreRecord) => break,
-            Err(e) => {
-                record_error = Err(Error::ReadError(e));
-                break;
-            }
+            Err(e) => Err(Error::ReadError(e))?,
             Ok(_) => {
                 let in_size = record.insert_size();
                 if in_size >= 0 {
@@ -106,14 +102,9 @@ fn main() -> Result<(), Error> {
         }
     }
 
-    match record_error {
-        Ok(_) => {
-            let serialized = serde_json::to_string(&qc)?;
-            println!("{}", serialized);
-            Ok(())
-        }
-        Err(e) => Err(e),
-    }
+    let serialized = serde_json::to_string(&qc)?;
+    println!("{}", serialized);
+    Ok(())
 }
 
 #[derive(Debug)]
