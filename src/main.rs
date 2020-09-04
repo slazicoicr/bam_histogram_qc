@@ -1,16 +1,14 @@
 use clap::{App, Arg};
 use rust_htslib::bam::{
     record::{Cigar, Record},
-    BGZFError, ReadError, Reader, ReaderPathError, ThreadingError,
+    Reader, Error as BamError, Read
 };
-use rust_htslib::prelude::*;
 use serde_derive::Serialize;
-use serde_json;
 use std::collections::HashMap;
 
 #[derive(Debug, Serialize)]
 struct BamQC {
-    insert_size: HashMap<i32, usize>,
+    insert_size: HashMap<i64, usize>,
     cigar: HashMap<u32, HashMap<char, usize>>,
 }
 
@@ -51,7 +49,7 @@ fn main() -> Result<(), Error> {
         .value_of("threads")
         .unwrap()
         .parse()
-        .map_err(|_| ThreadingError::Some)?;
+        .map_err(|_| BamError::SetThreads)?;
 
     let mut bam = if path == "-" {
         Reader::from_stdin()?
@@ -65,9 +63,8 @@ fn main() -> Result<(), Error> {
 
     loop {
         match bam.read(&mut record) {
-            Err(ReadError::NoMoreRecord) => break,
-            Err(e) => Err(Error::ReadError(e))?,
-            Ok(_) => {
+            Err(e) => return Err(Error::BamError(e)),
+            Ok(true) => {
                 let in_size = record.insert_size();
                 if in_size >= 0 {
                     qc.insert_size
@@ -82,7 +79,7 @@ fn main() -> Result<(), Error> {
                 let mut b;
                 let cv = record.cigar();
 
-                let cigar_iter: &mut Iterator<Item = &Cigar> = if record.is_reverse() {
+                let cigar_iter: &mut dyn Iterator<Item = &Cigar> = if record.is_reverse() {
                     a = cv.iter().rev();
                     &mut a
                 } else {
@@ -93,12 +90,13 @@ fn main() -> Result<(), Error> {
                 let mut cycle = 1;
                 for c in cigar_iter {
                     for _ in 0..c.len() {
-                        let pos = qc.cigar.entry(cycle).or_insert(HashMap::new());
+                        let pos = qc.cigar.entry(cycle).or_insert_with(HashMap::new);
                         pos.entry(c.char()).and_modify(|e| *e += 1).or_insert(1);
                         cycle += 1;
                     }
                 }
             }
+            Ok(false) => break
         }
     }
 
@@ -109,22 +107,8 @@ fn main() -> Result<(), Error> {
 
 #[derive(Debug)]
 enum Error {
-    ReaderPathError(ReaderPathError),
-    ThreadingError(ThreadingError),
-    ReadError(ReadError),
+    BamError(BamError),
     JSONError(serde_json::error::Error),
-}
-
-impl From<ReaderPathError> for Error {
-    fn from(error: ReaderPathError) -> Self {
-        Error::ReaderPathError(error)
-    }
-}
-
-impl From<ThreadingError> for Error {
-    fn from(error: ThreadingError) -> Self {
-        Error::ThreadingError(error)
-    }
 }
 
 impl From<serde_json::error::Error> for Error {
@@ -133,8 +117,8 @@ impl From<serde_json::error::Error> for Error {
     }
 }
 
-impl From<BGZFError> for Error {
-    fn from(error: BGZFError) -> Self {
-        Error::ReaderPathError(ReaderPathError::BGZFError(error))
+impl From<BamError> for Error {
+    fn from(error: BamError) -> Self {
+        Error::BamError(error)
     }
 }

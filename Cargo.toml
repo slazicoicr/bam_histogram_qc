@@ -1,12 +1,12 @@
 [package]
 name = "bam_histogram_qc"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Savo Lazic <savo.lazic@oicr.on.ca>"]
 edition = "2018"
 
 [dependencies]
 clap = "~2.33"
-rust-htslib = "0.23.0"
+rust-htslib = "0.32.0"
 serde = "~1.0"
 serde_derive = "~1.0"
 serde_json = "~1.0"
