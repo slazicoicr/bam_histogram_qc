@@ -68,7 +68,7 @@ fn main() -> Result<(), Error> {
             Err(e) => return Err(Error::BamError(e)),
             Ok(true) => {
                 let in_size = record.insert_size();
-                if in_size >= 0 {
+                if in_size > 0 {
                     qc.insert_size
                         .entry(in_size)
                         .and_modify(|e| *e += 1)
