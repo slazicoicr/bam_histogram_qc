@@ -9,14 +9,16 @@ use std::collections::HashMap;
 #[derive(Debug, Serialize)]
 struct BamQC {
     insert_size: HashMap<i64, usize>,
-    cigar: HashMap<u32, HashMap<char, usize>>,
+    r1_cigar: HashMap<u32, HashMap<char, usize>>,
+    r2_cigar: HashMap<u32, HashMap<char, usize>>,
 }
 
 impl BamQC {
     fn new() -> BamQC {
         BamQC {
             insert_size: HashMap::new(),
-            cigar: HashMap::new(),
+            r1_cigar: HashMap::new(),
+            r2_cigar: HashMap::new(),
         }
     }
 }
@@ -88,11 +90,22 @@ fn main() -> Result<(), Error> {
                 };
 
                 let mut cycle = 1;
+                let count = if record.is_first_in_template() {
+                    &mut qc.r1_cigar
+                } else {
+                    &mut qc.r2_cigar
+                };
+
                 for c in cigar_iter {
                     for _ in 0..c.len() {
-                        let pos = qc.cigar.entry(cycle).or_insert_with(HashMap::new);
+                        let pos = count.entry(cycle).or_insert_with(HashMap::new);
                         pos.entry(c.char()).and_modify(|e| *e += 1).or_insert(1);
-                        cycle += 1;
+
+                        // Deletions are not a machine cycle
+                        // If deletions happen, they are counted in the cycle that happened before
+                        if c.char() != 'D' {
+                            cycle += 1;
+                        }
                     }
                 }
             }
